@@ -11,7 +11,9 @@ function! Kno(raw)
         let query = query . "(?=.*" . substitute(token, " ", '\\s+', "g") . ")"
     endfor
     let query = query . '.*?\\n\\K(?-s).*' . substitute(tokens[0], " ", '\\s+', "g")
-    call s:Search('"' . escape(query, '"') . '"')
+
+    let ignore_case = (a:raw !~# '[A-Z]')  " smartcase
+    call s:Search('"' . escape(query, '"') . '"', ignore_case)
 
     " open quickfix window
     botright copen
@@ -22,7 +24,7 @@ function! Kno(raw)
     for token in tokens
         call add(query_vim, substitute(token, " ", '\\_s\\+', "g"))
     endfor
-    let @/ = join(query_vim, '\|')
+    let @/ = join(query_vim, '\|') . (ignore_case ? '\c' : '')
     call feedkeys(":let &hlsearch=1 \| echo \<CR>", "n")
 endfunction
 
@@ -58,10 +60,13 @@ function! s:Tokenize(raw)
     return tokens
 endfunction
 
-function! s:Search(query)
+function! s:Search(query, ignore_case)
     let grepformat_ = &grepformat
     try
         let &l:grepprg  = 'ag --vimgrep --silent -m1' " only the first match
+        if a:ignore_case
+            let &l:grepprg = &l:grepprg . " -i"
+        endif
         let &grepformat = '%f:%l:%c:%m,%f:%l:%m'
 
         echo "Searching ..."
